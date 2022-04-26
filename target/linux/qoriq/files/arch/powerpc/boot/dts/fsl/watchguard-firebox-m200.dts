@@ -1,0 +1,317 @@
+// SPDX-License-Identifier: BSD-3-Clause OR GPL-2.0-or-later
+/*
+ * WatchGuard Firebox M200 Device Tree Source
+ *
+ *** Cannot get Rx to work whatever dts used, hopefully someone will be able to complete this one day. ***
+ *
+ * Basing on t1042d4rdb.dts and NOT t1042rdb_pi as used by OEM; its the closest fit of the RDB variants. Linux 5.10.109 
+ * A dts based on t1042rdb_pi gets very convoluted in order to set the OpenWrt interface order in conparison.
+ * From https://github.com/ARM-software/u-boot/blob/master/board/freescale/t104xrdb/README
+	The T1042D4RDB is a Freescale reference board that hosts the T1042 SoC.
+	The board is re-designed T1040RDB board with following changes :
+	- Support of DDR4 memory
+	- Support for 0x86 serdes protocol which can support following interfaces
+		- 2 RGMII's on DTSEC4, DTSEC5
+		- 3 SGMII on DTSEC1, DTSEC2 & DTSEC3
+ * which tallies with this from uboot PBL log:
+	Using SERDES1 Protocol: 134 (0x86)
+ * and from uboot mdio command
+	MB-M200 => mdio list
+	FSL_MDIO0:
+	0 - Marvell 88E1543 <--> FM1@DTSEC3
+	1 - Marvell 88E1543 <--> FM1@DTSEC1
+	2 - Marvell 88E1543 <--> FM1@DTSEC2
+	4 - Marvell 88E6171 <--> FM1@DTSEC5
+	16 - Marvell 88E6171 <--> FM1@DTSEC4
+ * Would be worth testing the m200 with some DDR4 memory; we know it already works with the memory out of an m300
+
+ * Copyright 2013 - 2015 Freescale Semiconductor Inc.
+ * Copyright 2020 - 2021 Stijn Tintel <stijn@linux-ipv6.be>
+ * Copyright 2022 Matt Fawcett <mattytap@gmail.com>
+ */
+
+/include/ "t104xsi-pre.dtsi"
+/include/ "t104xd4rdb.dtsi"
+
+/ {
+	model = "WatchGuard Firebox M200";
+	compatible = "watchguard,firebox-m200", "fsl,T1042D4RDB";
+	#address-cells = <2>;
+	#size-cells = <2>;
+	interrupt-parent = <&mpic>;
+
+	// ifc reg and range changes and partitions lifted from OEM
+	ifc: localbus@ffe124000 {
+		ranges = <0 0 0xf 0xefc00000 0x00400000>;
+
+		nor@0,0 {
+			reg = <0x0 0x0 0x400000>;
+
+			partition@0{
+				reg = <0x0 0x10000>;
+				label = "qoriq-rcw";
+				read-only;
+			};
+
+			partition@10000 {
+				reg = <0x10000 0x20000>;
+				label = "wg_cfg0";
+				read-only;
+			};
+
+			partition@30000 {
+				reg = <0x30000 0x10000>;
+				label = "wg_cfg1";
+				read-only;
+			};
+
+			partition@40000 {
+				reg = <0x40000 0x10000>;
+				label = "wg_mfg_data";
+				read-only;
+			};
+
+			partition@50000 {
+				reg = <0x50000 0xb0000>;
+				label = "wg_bootopt_data_and_reserved";
+				read-only;
+			};
+
+			partition@100000 {
+				reg = <0x100000 0xb0000>;
+				label = "wg_extra_reserved_1";
+				read-only;
+			};
+
+			partition@1B0000 {
+				reg = <0x1b0000 0xb0000>;
+				label = "wg_extra_reserved_2";
+				read-only;
+			};
+
+			partition@260000 {
+				reg = <0x260000 0xc0000>;
+				label = "wg_u-boot_failsafe";
+				read-only;
+			};
+
+			partition@320000 {
+				reg = <0x320000 0x10000>;
+				label = "qoriq-fman";
+				read-only;
+			};
+
+			partition@330000 {
+				reg = <0x330000 0x10000>;
+				label = "u-boot-env";
+			};
+
+			partition@340000 {
+				reg = <0x340000 0xc0000>;
+				label = "u-boot";
+				read-only;
+			};
+		};
+
+		nand@2,0 {
+			status = "disabled";
+		};
+
+		cpld@3,0 {
+			compatible = "fsl,t1040d4rdb-cpld",
+					"fsl,deepsleep-cpld";
+		};
+	};
+
+	soc: soc@ffe000000 {
+		/delete-node/ ethernet-switch@800000;
+
+		fman0: fman@400000 {
+
+			// port 0 on PHY
+			enet0: ethernet@e0000 {
+				phy-handle = <&phy_sgmii_0>;
+				phy-connection-type = "sgmii";
+			};
+
+			// port 1 on PHY
+			enet1: ethernet@e2000 {
+				phy-handle = <&phy_sgmii_1>;
+				phy-connection-type = "sgmii";
+			};
+
+			// port 2 on PHY
+			enet2: ethernet@e4000 {
+				phy-handle = <&phy_sgmii_2>;
+				phy-connection-type = "sgmii";
+			};
+
+			// port 3 on PHY
+			// not connected
+
+			//port 5 on marvell switch (not used currently but is on OEM)
+			enet3: ethernet@e6000 {
+				phy-connection-type = "rgmii";
+
+				fixed-link {
+					speed = <1000>;
+					full-duplex;
+				};
+			};
+
+			//port 6 on marvell switch
+			enet4: ethernet@e8000 {
+				phy-connection-type = "rgmii";
+
+				fixed-link {
+					speed = <1000>;
+					full-duplex;
+				};
+			};
+
+			mdio0: mdio@fc000 {
+				phy_sgmii_0: ethernet-phy@0 {
+					reg = <0>;
+				};
+
+				phy_sgmii_1: ethernet-phy@1 {
+					reg = <1>;
+				};
+
+				phy_sgmii_2: ethernet-phy@2 {
+					reg = <2>;
+				};
+
+				// Compliant with https://elixir.bootlin.com/linux/v5.10.109/source/Documentation/devicetree/bindings/net/dsa/marvell.txt
+				// Based on similar switch in m300
+
+				switch0: switch@10 {
+					compatible = "marvell,mv88e6085";
+					reg = <0x10>;
+
+					mdio {
+						#address-cells = <1>;
+						#size-cells = <0>;
+
+						// sweth3
+						switch0phy0: switch0phy0@0 {
+							reg = <0>;
+							interrupt-parent = <&switch0>;
+						};
+
+						// sweth4
+						switch0phy1: switch0phy1@1 {
+							reg = <1>;
+							interrupt-parent = <&switch0>;
+						};
+
+						// sweth5
+						switch0phy2: switch0phy2@2 {
+							reg = <2>;
+							interrupt-parent = <&switch0>;
+						};
+
+						// sweth6
+						switch0phy3: switch0phy3@3 {
+							reg = <3>;
+							interrupt-parent = <&switch0>;
+						};
+
+						// sweth7
+						switch0phy4: switch0phy4@4 {
+							reg = <4>;
+							interrupt-parent = <&switch0>;
+						};
+					};
+
+					ports {
+						#address-cells = <1>;
+						#size-cells = <0>;
+
+						port@0 {
+							reg = <0>;
+							label = "sweth3";
+							phy-handle = <&switch0phy0>;/home/matt/Development/openwrt/
+						};
+
+						port@1 {
+							reg = <1>;
+							label = "sweth4";
+							phy-handle = <&switch0phy1>;
+						};
+
+						port@2 {
+							reg = <2>;
+							label = "sweth5";
+							phy-handle = <&switch0phy2>;
+						};
+
+						port@3 {
+							reg = <3>;
+							label = "sweth6";
+							phy-handle = <&switch0phy3>;
+						};
+
+						port@4 {
+							reg = <4>;
+							label = "sweth7";
+							phy-handle = <&switch0phy4>;
+						};
+
+						// OEM bootlog suggests multiple ports are attached to switch
+						// Keep this until OEM supplies GPL sources
+						port@5 {
+							status = "disabled";
+
+							reg = <5>;
+							label = "cpu";
+							ethernet = <&enet3>;
+							phy-mode = "rgmii-id";
+
+							fixed-link {
+								speed = <1000>;
+								full-duplex;
+							};
+						};
+
+						// requires rgmii-id (id for internal delay) for Tx
+						port@6 {
+							reg = <6>;
+							label = "cpu";
+							ethernet = <&enet4>;
+							phy-mode = "rgmii-id";
+
+							fixed-link {
+								speed = <1000>;
+								full-duplex;
+							};
+						};
+					};
+				};
+			};
+		};
+		i2c@118000 {
+			tpm@29 {
+				compatible = "tpm,tpm_i2c_atmel";
+				reg = <0x29>;
+			};
+			hwmon@2c {
+				compatible = "winbond,w83793";
+				reg = <0x2c>;
+			};
+			hwmon@2d {
+				compatible = "winbond,w83793";
+				reg = <0x2d>;
+			};
+			rtc@32 {
+				compatible = "ricoh,rs5c372a";
+				reg = <0x32>;
+			};
+			pca9547@77 {
+				status = "disabled";
+			};
+		};
+	};
+};
+
+#include "t1042si-post.dtsi"

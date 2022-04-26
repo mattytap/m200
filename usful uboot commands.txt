@@ -1,0 +1,32 @@
+setenv OpenWrt_kernel watchguard_firebox-m300-kernel.bin
+setenv OpenWrt_fdt image-watchguard-firebox-m300.dtb
+setenv wgBootSysA 'setenv bootargs root=/dev/mmcblk0p2 rw rootdelay=2 console=$consoledev,$baudrate fsl_dpaa_fman.fsl_fm_max_frm=1530; ext2load mmc 0:1 $fdtaddr $OpenWrt_fdt; ext2load mmc 0:1 $loadaddr $OpenWrt_kernel; bootm $loadaddr - $fdtaddr'
+
+to reverse
+setenv wgBootSysA 'setenv bootargs root=/dev/$SysARoot rw rootdelay=2 console=$consoledev,$baudrate $othbootargs; ext2load mmc 0:3 $fdtaddr $fdtfile; ext2load mmc 0:3 $loadaddr $WGKernelfile; usb start; bootm $loadaddr - $fdtaddr;'
+
+**** dont forget to saveenv ****
+
+
+ ext2load mmc 0:2 0x100000 /root/fsl_fman_ucode_t1040_r1.1_106_4_18.bin
+ protect off 0xeff20000 0xeff2ffff &&erase 0xeff20000 0xeff2ffff && cp.b 0x100000 0xeff20000 0x10000 && protect on 0xeff20000 0xeff2ffff && cmp.b 0xeff20000 0x100000 0x10000
+
+ fsl_fman_ucode_t1040_r1.1_106_4_18.bin
+ fsl_fman_ucode_t1040_r1.1_107_4_2.bin
+ fsl_fman_ucode_t1040_r1.1_108_5_9.bin
+
+ fsl_fman_ucode_t1040_r1.1_106_4_15.bin
+
+.*\t[a-y#].*;\n
+\n\n
+.*\{\n.*\};\n
+
+
+setenv OpenWrt_bootargs 'fsl_dpaa_fman.fsl_fm_max_frm=1530 fsl_dpaa_fman.fsl_fm_rx_extra_headroom=192'
+setenv wgBootSysA 'setenv bootargs root=/dev/mmcblk0p2 rw rootdelay=2 console=$consoledev,$baudrate $OpenWrt_bootargs; ext2load mmc 0:1 $fdtaddr $OpenWrt_fdt; ext2load mmc 0:1 $loadaddr $OpenWrt_kernel; bootm $loadaddr - $fdtaddr'
+
+editenv ethprime
+editenv ethact
+setenv serverip '10.0.1.13'
+setenv ipaddr '10.0.1.1'
+setenv netmask '255.255.255.0'
